@@ -102,3 +102,33 @@ print("Lost Device shared key:", LostDeviceSharedKey2)
 print(type(LostDeviceSharedKey2))
 
 print("Check if the Founder and the Lost Device shared the same shared key:", FounderSharedKey == LostDeviceSharedKey2)
+
+# this part is the on described in the paper like: Derive a symmetric key with ANSI X.963 KDF on th shared secret with the advertised public key as entropy
+# and SHA-256 as the hash function. This is pretty similar to what we have done before. Maybe is time to create some functions and a proper main...
+
+
+sharedinfo = AdvKey
+
+xkdf = X963KDF(
+    algorithm=hashes.SHA256(),
+    length=32,
+    sharedinfo=sharedinfo,
+)
+
+iCloudKey = xkdf.derive(bytes(str(LostDeviceSharedKey2), 'ISO-8859-1'))
+
+xkdf = X963KDF(
+    algorithm=hashes.SHA256(),
+    length=32,
+    sharedinfo=sharedinfo,
+)
+
+xkdf.verify(bytes(str(LostDeviceSharedKey2), 'ISO-8859-1'), iCloudKey)
+
+print('iCloudKey key: ')
+
+import codecs
+
+output = iCloudKey.decode('ISO-8859-1') # this is encoding is given from documentation
+
+print(output)
