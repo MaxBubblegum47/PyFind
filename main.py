@@ -132,3 +132,19 @@ import codecs
 output = iCloudKey.decode('ISO-8859-1') # this is encoding is given from documentation
 
 print(output)
+
+# a questo punto dovrei provare ad usare questa chiave per andare a cifrare qualcosa e dovrei essere in grado
+# teoricamente di andarlo a decifrare
+
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+key = iCloudKey
+iv = os.urandom(16)
+cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+encryptor = cipher.encryptor()
+ct = encryptor.update(b"a secret message") + encryptor.finalize()
+
+# non capisco esattamente una cosa: decryptor assume già che io stia usando la stessa chiave, ma se volessi andare a 
+# fare un test a riguardo?? Forse dovrei cercare qualcosa che abbia a che fare con la key derivation
+decryptor = cipher.decryptor()
+print(decryptor.update(ct) + decryptor.finalize())
