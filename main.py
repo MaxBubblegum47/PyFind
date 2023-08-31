@@ -1,6 +1,6 @@
-###############
-# LOST DEVICE #
-###############
+#######################
+# PAIRING WITH AIRTAG #
+#######################
 
 from tinyec import registry
 import secrets
@@ -23,7 +23,6 @@ curve = registry.get_curve('secp224r1')
 iPhonePrivKey = secrets.randbelow(curve.field.n)
 iPhonePubKey = iPhonePrivKey * curve.g
 print("iPhone public key:", compress(iPhonePubKey))
-print("iPhone public key without compress:", iPhonePubKey)
 
 LostDevicePrivKey = secrets.randbelow(curve.field.n)
 LostDevicePubKey = LostDevicePrivKey * curve.g
@@ -39,112 +38,189 @@ print("Lost Device shared key:", compress(LostDeviceSharedKey))
 
 print("Check if the iPhone and the Lost Device shared the same shared key:", iPhoneSharedKey == LostDeviceSharedKey)
 
-# STEP 2: compute X963KDF to generate AdvKey (advertisement key to send over BLE) on the Lost Device
+########################
+# LOST DEVICE ACTIVITY #
+########################
+
 import os
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.x963kdf import X963KDF
 
-# this scheme seems really redundant but I have taken it from documentation
-sharedinfo = bytes(compress(LostDeviceSharedKey), 'ISO-8859-1')
+# algorithm steps
+# 1. SKi = KDF(SKi-1, update, 32)
+# 2. (ui, vi) = KDF(SKi, diversify, 72)
+# 3. di = (d0 * ui) + vi
+# 4. pi = di * G
+
+
+# SKi = KDF(SKi-1, update, 32)
+xkdf = X963KDF(
+    algorithm=hashes.SHA256(),
+    length=32,
+    sharedinfo = b""
+)
+
+SKi = xkdf.derive(bytes(compress(LostDeviceSharedKey), 'ISO-8859-1'))
 
 xkdf = X963KDF(
     algorithm=hashes.SHA256(),
     length=32,
-    sharedinfo=sharedinfo,
+    sharedinfo=b""
 )
 
-AdvKey = xkdf.derive(bytes(compress(iPhoneSharedKey), 'ISO-8859-1'))
+xkdf.verify(bytes(compress(LostDeviceSharedKey), 'ISO-8859-1'), SKi)
+
+# (ui, vi) = KDF(SKi, diversify, 72)
 
 xkdf = X963KDF(
     algorithm=hashes.SHA256(),
-    length=32,
-    sharedinfo=sharedinfo,
+    length=72,
+    sharedinfo = b""
 )
 
-xkdf.verify(bytes(compress(iPhoneSharedKey), 'ISO-8859-1'), AdvKey)
+res = xkdf.derive(SKi)
+Ui = res[:36]
+Vi = res[36:72]
 
-print('Advertisement key: ')
+# converting to int
+Ui_int_val = int.from_bytes(Ui, "big")
+Vi_int_val = int.from_bytes(Vi, "big")
 
-import codecs
+# di = (d0 * ui) + vi
+Di = (LostDevicePrivKey * Ui_int_val) + Vi_int_val
 
-output = AdvKey.decode('ISO-8859-1') # this is encoding is given from documentation
+# pi = di * G
+Pi = Di * curve.g
 
-print(output)
+print("Advertisement key of the Lost Device: " + compress(Pi))
 
 ##################
 # FOUNDER DEVICE #
 ##################
+# ECDH with lost device using the Pi as generator
+# X963 to derive another key of 32 bytes
+# split this 32 bytes key into 16 bytes of e' and 16 bytes IV and use it with AES-GCM algorithm to cipher some metadata
 
-print("Communication between Founder and Lost Device...")
+# step 1
+curve = registry.get_curve('secp224r1')
+
+print("Pairing between my Founder and LostDevice...")
 
 FounderPrivKey = secrets.randbelow(curve.field.n)
-
-""" print("PRIVATO")
-print(type(AdvKey))
-print(type(FounderPrivKey)) """
-
-# froom what I have understood, basically we are using the advertisement key as a generator(?)
-
-FounderPubKey = FounderPrivKey * int.from_bytes(AdvKey, "big")
-print("Founder public key:", FounderPubKey)
+FounderPubKey = FounderPrivKey * Pi
+print("Founder public key:", compress(FounderPubKey))
 
 LostDevicePrivKey2 = secrets.randbelow(curve.field.n)
-LostDevicePubKey2 = LostDevicePrivKey2 * int.from_bytes(AdvKey, "big")
-print("Lost Device public key:", LostDevicePubKey2)
-
-print("Now exchange the public keys Apple *Magic* Bluethoot")
+LostDevicePubKey2 = LostDevicePrivKey2 * Pi
+print("Lost Device2 public key:", compress(LostDevicePubKey2))
 
 FounderSharedKey = FounderPrivKey * LostDevicePubKey2
-print("Founder shared key:", FounderSharedKey)
+print("Founder shared key:", compress(FounderSharedKey))
 
 LostDeviceSharedKey2 = LostDevicePrivKey2 * FounderPubKey
-print("Lost Device shared key:", LostDeviceSharedKey2)
-print(type(LostDeviceSharedKey2))
+print("Lost Device2 shared key:", compress(LostDeviceSharedKey2))
 
-print("Check if the Founder and the Lost Device shared the same shared key:", FounderSharedKey == LostDeviceSharedKey2)
+print("Check if the iPhone and the Lost Device shared the same shared key:", FounderSharedKey == LostDeviceSharedKey2)
 
-# this part is the on described in the paper like: Derive a symmetric key with ANSI X.963 KDF on th shared secret with the advertised public key as entropy
-# and SHA-256 as the hash function. This is pretty similar to what we have done before. Maybe is time to create some functions and a proper main...
+# step 2
+xkdf = X963KDF(
+    algorithm=hashes.SHA256(),
+    length=32,
+    sharedinfo = bytes(compress(Pi), 'ISO-8859-1')
+)
+
+AES_GCM_KEY_TO_SPLIT = xkdf.derive(bytes(compress(FounderSharedKey), 'ISO-8859-1'))
+e = AES_GCM_KEY_TO_SPLIT[:16]
+IV = AES_GCM_KEY_TO_SPLIT[16:32]
+
+import base64
+import hashlib
+
+from Cryptodome.Cipher import AES  # from pycryptodomex v-3.10.4
+from Cryptodome.Random import get_random_bytes
+
+HASH_NAME = "SHA512"
+IV_LENGTH = 16
+ITERATION_COUNT = 65535
+KEY_LENGTH = 16
+SALT_LENGTH = 16
+TAG_LENGTH = 16
 
 
-sharedinfo = AdvKey
+def encrypt(password, plain_message):
+    salt = get_random_bytes(SALT_LENGTH) 
+    iv = IV
+
+    secret = get_secret_key(password, salt)
+
+    cipher = AES.new(secret, AES.MODE_GCM, iv)
+
+    encrypted_message_byte, tag = cipher.encrypt_and_digest(
+        plain_message.encode("utf-8")
+    )
+    cipher_byte = salt + iv + encrypted_message_byte + tag
+
+    encoded_cipher_byte = base64.b64encode(cipher_byte)
+    return bytes.decode(encoded_cipher_byte)
+
+
+def get_secret_key(password, salt):
+    return hashlib.pbkdf2_hmac(
+        HASH_NAME, password.encode(), salt, ITERATION_COUNT, KEY_LENGTH
+    )
+
+outputFormat = "{:<25}:{}"
+secret_key = str(e)
+plain_text = "Your_plain_text"
+
+print("------ AES-GCM Encryption ------")
+cipher_text = encrypt(secret_key, plain_text)
+print(outputFormat.format("encryption input", plain_text))
+print(outputFormat.format("encryption output", cipher_text))
+
+
+##########
+# iPhone #
+##########
+# suppongo gia' di sapere quale che sia la chiave Pi perche'
+# magicamente sono sincronizzato con iCloud
+# Domanda: se faccio l'hash di una kdf, ottengo la stessa collisione? Perhce' se si
+# allora sono praticamente apposto
+# devo rifare ECDH come ha fatto il founder praticamente con il LostDevice, usando
+# il medesimo generatore Pi. In questo modo dovrei essere in grado di arrivare ad un
+# segreto comune tale per cui possa ritornare ad avere e' ed IV esattamente come li
+# usati il founder. In tal modo potrei decifrare il contenuto del file. 
+
+final_key = FounderPubKey * LostDevicePrivKey2
 
 xkdf = X963KDF(
     algorithm=hashes.SHA256(),
     length=32,
-    sharedinfo=sharedinfo,
+    sharedinfo = bytes(compress(Pi), 'ISO-8859-1')
 )
 
-iCloudKey = xkdf.derive(bytes(str(LostDeviceSharedKey2), 'ISO-8859-1'))
+final_key_TO_SPLIT = xkdf.derive(bytes(compress(final_key), 'ISO-8859-1'))
+e2 = final_key_TO_SPLIT[:16]
+IV2 = final_key_TO_SPLIT[16:32]
 
-xkdf = X963KDF(
-    algorithm=hashes.SHA256(),
-    length=32,
-    sharedinfo=sharedinfo,
-)
+def decrypt(password, cipher_message):
+    decoded_cipher_byte = base64.b64decode(cipher_message)
 
-xkdf.verify(bytes(str(LostDeviceSharedKey2), 'ISO-8859-1'), iCloudKey)
+    salt = decoded_cipher_byte[:SALT_LENGTH]
+    iv = IV2
+    encrypted_message_byte = decoded_cipher_byte[
+        (IV_LENGTH + SALT_LENGTH) : -TAG_LENGTH
+    ]
+    tag = decoded_cipher_byte[-TAG_LENGTH:]
+    secret = get_secret_key(password, salt)
+    cipher = AES.new(secret, AES.MODE_GCM, iv)
 
-print('iCloudKey key: ')
+    decrypted_message_byte = cipher.decrypt_and_verify(encrypted_message_byte, tag)
+    return decrypted_message_byte.decode("utf-8")
 
-import codecs
+secret_key = str(e2)
+decrypted_text = decrypt(secret_key, cipher_text)
 
-output = iCloudKey.decode('ISO-8859-1') # this is encoding is given from documentation
-
-print(output)
-
-# a questo punto dovrei provare ad usare questa chiave per andare a cifrare qualcosa e dovrei essere in grado
-# teoricamente di andarlo a decifrare
-
-import os
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-key = iCloudKey
-iv = os.urandom(16)
-cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-encryptor = cipher.encryptor()
-ct = encryptor.update(b"a secret message") + encryptor.finalize()
-
-# non capisco esattamente una cosa: decryptor assume già che io stia usando la stessa chiave, ma se volessi andare a 
-# fare un test a riguardo?? Forse dovrei cercare qualcosa che abbia a che fare con la key derivation
-decryptor = cipher.decryptor()
-print(decryptor.update(ct) + decryptor.finalize())
+print("\n------ AES-GCM Decryption ------")
+print(outputFormat.format("decryption input", cipher_text))
+print(outputFormat.format("decryption output", decrypted_text))
