@@ -2,6 +2,9 @@
 
 import base64
 import hashlib
+import os
+import secrets
+from tinyec import registry
 from Cryptodome.Cipher import AES  # from pycryptodomex v-3.10.4
 from Cryptodome.Random import get_random_bytes
 from cryptography.hazmat.primitives import hashes
