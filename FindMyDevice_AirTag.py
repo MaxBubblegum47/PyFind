@@ -20,7 +20,7 @@ LostDevicePrivKey = secrets.randbelow(curve.field.n)
 LostDevicePubKey = LostDevicePrivKey * curve.g
 print("Lost Device public key:", compress(LostDevicePubKey))
 
-print("Now exchange the public keys Apple *Magic* Bluethoot")
+print("Now exchange the public keys Apple *Magic* Bluetooth")
 
 iPhoneSharedKey = iPhonePrivKey * LostDevicePubKey
 print("iPhone shared key:", compress(iPhoneSharedKey))
