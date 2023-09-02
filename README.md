@@ -13,7 +13,7 @@ Pyfind is a project based on:
 
 The aim is to recreate in Python the "Find My Device Feature" that was first presented during the WWDC 2019. Most of the project is based on the first documented that I have linked. Since a real Apple's documentation is still missing, this is the closest thing we have.
 
-To test the project you can ```git clone``` the repo, positioning inside ```\src``` folder and type the following commands:
+To test the project you can ```git clone``` the repo, positioning inside ```/src``` folder and type the following commands:
 ```bash
 pip install requirements.txt
 python3 FindMyDevice.py
