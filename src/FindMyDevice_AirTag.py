@@ -3,7 +3,6 @@
 #######################
 
 from utility import *
-from tinyec import registry
 import secrets
 
 # STEP 1: compute ECDH with the AirTag
