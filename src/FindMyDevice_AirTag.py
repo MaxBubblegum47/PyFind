@@ -29,6 +29,9 @@ print("Lost Device shared key:", compress(LostDeviceSharedKey))
 
 print("Check if the iPhone and the Lost Device shared the same shared key:", iPhoneSharedKey == LostDeviceSharedKey)
 
+print("Lunghezza prima chiave SKi: ")
+print(len(bytes(compress(LostDeviceSharedKey), 'ISO-8859-1')))
+
 ########################
 # LOST DEVICE ACTIVITY #
 ########################
