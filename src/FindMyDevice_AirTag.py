@@ -82,7 +82,7 @@ Pi = Di * curve.g
 print("Advertisement key of the Lost Device: " + compress(Pi))
 
 ##################
-# FOUNDER DEVICE #
+# Finder DEVICE #
 ##################
 # ECDH with lost device using the Pi as generator
 # X963 to derive another key of 32 bytes
@@ -91,22 +91,22 @@ print("Advertisement key of the Lost Device: " + compress(Pi))
 # step 1
 curve = registry.get_curve('secp224r1')
 
-print("Pairing between my Founder and LostDevice...")
+print("Pairing between my Finder and LostDevice...")
 
-FounderPrivKey = secrets.randbelow(curve.field.n)
-FounderPubKey = FounderPrivKey * Pi
-print("Founder public key:", compress(FounderPubKey))
+FinderPrivKey = secrets.randbelow(curve.field.n)
+FinderPubKey = FinderPrivKey * Pi
+print("Finder public key:", compress(FinderPubKey))
 
 LostDevicePubKey2 = LostDevicePrivKey * Pi
 print("Lost Device2 public key:", compress(LostDevicePubKey2))
 
-FounderSharedKey = FounderPrivKey * LostDevicePubKey2
-print("Founder shared key:", compress(FounderSharedKey))
+FinderSharedKey = FinderPrivKey * LostDevicePubKey2
+print("Finder shared key:", compress(FinderSharedKey))
 
-LostDeviceSharedKey2 = LostDevicePrivKey * FounderPubKey
+LostDeviceSharedKey2 = LostDevicePrivKey * FinderPubKey
 print("Lost Device2 shared key:", compress(LostDeviceSharedKey2))
 
-print("Check if the iPhone and the Lost Device shared the same shared key:", FounderSharedKey == LostDeviceSharedKey2)
+print("Check if the iPhone and the Lost Device shared the same shared key:", FinderSharedKey == LostDeviceSharedKey2)
 
 # step 2
 xkdf = X963KDF(
@@ -115,7 +115,7 @@ xkdf = X963KDF(
     sharedinfo = bytes(compress(Pi), 'ISO-8859-1')
 )
 
-AES_GCM_KEY_TO_SPLIT = xkdf.derive(bytes(compress(FounderSharedKey), 'ISO-8859-1'))
+AES_GCM_KEY_TO_SPLIT = xkdf.derive(bytes(compress(FinderSharedKey), 'ISO-8859-1'))
 e = AES_GCM_KEY_TO_SPLIT[:16]
 IV = AES_GCM_KEY_TO_SPLIT[16:32]
 
@@ -136,12 +136,12 @@ print(outputFormat.format("encryption output", cipher_text))
 # magicamente sono sincronizzato con iCloud
 # Domanda: se faccio l'hash di una kdf, ottengo la stessa collisione? Perhce' se si
 # allora sono praticamente apposto
-# devo rifare ECDH come ha fatto il founder praticamente con il LostDevice, usando
+# devo rifare ECDH come ha fatto il Finder praticamente con il LostDevice, usando
 # il medesimo generatore Pi. In questo modo dovrei essere in grado di arrivare ad un
 # segreto comune tale per cui possa ritornare ad avere e' ed IV esattamente come li
-# usati il founder. In tal modo potrei decifrare il contenuto del file. 
+# usati il Finder. In tal modo potrei decifrare il contenuto del file. 
 
-final_key = FounderPubKey * LostDevicePrivKey
+final_key = FinderPubKey * LostDevicePrivKey
 
 xkdf = X963KDF(
     algorithm=hashes.SHA256(),

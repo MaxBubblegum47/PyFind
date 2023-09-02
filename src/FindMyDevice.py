@@ -67,27 +67,27 @@ Pi = Di * curve.g
 print("Advertisement key of the Lost Device: " + compress(Pi))
 
 ##################
-# FOUNDER DEVICE #
+# Finder DEVICE #
 ##################
 
 # ECDH with lost device using the Pi as generator
 curve = registry.get_curve('secp224r1')
-print("-----------------------------------------------------\nPairing between my lost iPhone and Founder Device...")
+print("-----------------------------------------------------\nPairing between my lost iPhone and Finder Device...")
 
-FounderPrivKey = secrets.randbelow(curve.field.n)
-FounderPubKey = FounderPrivKey * Pi
-print("Founder public key:", compress(FounderPubKey))
+FinderPrivKey = secrets.randbelow(curve.field.n)
+FinderPubKey = FinderPrivKey * Pi
+print("Finder public key:", compress(FinderPubKey))
 
 iPhonePubKey2 = iPhonePrivKey * Pi
 print("iPhone Device2 public key:", compress(iPhonePubKey2))
 
-FounderSharedKey = FounderPrivKey * iPhonePubKey2
-print("Founder shared key:", compress(FounderSharedKey))
+FinderSharedKey = FinderPrivKey * iPhonePubKey2
+print("Finder shared key:", compress(FinderSharedKey))
 
-iPhoneSharedKey = iPhonePrivKey * FounderPubKey
+iPhoneSharedKey = iPhonePrivKey * FinderPubKey
 print("iPhone shared key:", compress(iPhoneSharedKey))
 
-print("Check if the iPhone and the Lost Device shared the same shared key:", FounderSharedKey == iPhoneSharedKey)
+print("Check if the iPhone and the Lost Device shared the same shared key:", FinderSharedKey == iPhoneSharedKey)
 
 # X963 to derive another key of 32 bytes
 xkdf = X963KDF(
@@ -97,7 +97,7 @@ xkdf = X963KDF(
 )
 
 # split this 32 bytes key into 16 bytes of e' and 16 bytes IV and use it with AES-GCM algorithm to cipher some metadata
-AES_GCM_KEY_TO_SPLIT = xkdf.derive(bytes(compress(FounderSharedKey), 'ISO-8859-1'))
+AES_GCM_KEY_TO_SPLIT = xkdf.derive(bytes(compress(FinderSharedKey), 'ISO-8859-1'))
 e = AES_GCM_KEY_TO_SPLIT[:16]
 IV = AES_GCM_KEY_TO_SPLIT[16:32]
 
@@ -114,9 +114,9 @@ print(outputFormat.format("Encryption output: ", cipher_text))
 ##########
 # OWNER  #
 ##########
-print("-----------------------------------------------------\nRetriving metadata from founder's upload on iCloud...")
+print("-----------------------------------------------------\nRetriving metadata from Finder's upload on iCloud...")
 
-final_key = FounderPubKey * iPhonePrivKey
+final_key = FinderPubKey * iPhonePrivKey
 
 xkdf = X963KDF(
     algorithm=hashes.SHA256(),
