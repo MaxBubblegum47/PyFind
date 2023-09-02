@@ -1,11 +1,3 @@
-# Saving up films information
-saveEven.txt
-saveOdd.txt
-website.html
-
-# Bot Information
-config.py
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
