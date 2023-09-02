@@ -4,4 +4,11 @@
 </p>
 
 
-In this small project I will try to reproduce the Find My Devicces feature in python. I hope to add asap some slides about the topic and some installation guide. See you soon
+Pyfind is a project based on:
+1. Who Can Find My Devices? Security and Privacy of Apple's Crowd-Sourced Bluetooth Location Tracking System 
+(https://arxiv.org/abs/2103.02282)
+2. The Clever Cryptography Behind Apple's 'Find My' Feature (https://www.wired.com/story/apple-find-my-cryptography-bluetooth/)
+3. How does Apple (privately) find your offline devices? (https://blog.cryptographyengineering.com/2019/06/05/how-does-apple-privately-find-your-offline-devices/)
+4. WWDC 2019 Keynote - Apple (https://www.youtube.com/watch?v=psL_5RIBqnY&t=6711s) [1:50:00]
+
+The is to recreate in Python the "Find My Device Feature" that was first presented during the WWDC 2019. Most of the project is based on the first documented that I have linked. Since a real Apple's documentation is still missing, this is the closest thing we have.
