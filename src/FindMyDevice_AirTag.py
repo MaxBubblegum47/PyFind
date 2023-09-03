@@ -2,7 +2,7 @@
 # PAIRING WITH AIRTAG #
 #######################
 
-from utility import *
+from lib.utils import *
 import secrets
 
 # STEP 1: compute ECDH with the AirTag
