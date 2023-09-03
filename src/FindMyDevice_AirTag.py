@@ -29,9 +29,6 @@ print("Lost Device shared key:", compress(LostDeviceSharedKey))
 
 print("Check if the iPhone and the Lost Device shared the same shared key:", iPhoneSharedKey == LostDeviceSharedKey)
 
-print("Lunghezza prima chiave SKi: ")
-print(len(bytes(compress(LostDeviceSharedKey), 'ISO-8859-1')))
-
 ########################
 # LOST DEVICE ACTIVITY #
 ########################
@@ -41,6 +38,7 @@ print(len(bytes(compress(LostDeviceSharedKey), 'ISO-8859-1')))
 # 3. di = (d0 * ui) + vi
 # 4. pi = di * G
 
+print("\nLost Device forging advertisemente key...")
 
 # SKi = KDF(SKi-1, update, 32)
 xkdf = X963KDF(
@@ -93,7 +91,7 @@ print("Advertisement key of the Lost Device: " + compress(Pi))
 # step 1
 curve = registry.get_curve('secp224r1')
 
-print("Pairing between my Finder and LostDevice...")
+print("\nSomeone find my LostDevice. Time to exchanging some message through BLE...")
 
 FinderPrivKey = secrets.randbelow(curve.field.n)
 FinderPubKey = FinderPrivKey * Pi
@@ -123,13 +121,17 @@ IV = AES_GCM_KEY_TO_SPLIT[16:32]
 
 outputFormat = "{:<25}:{}"
 secret_key = str(e)
-plain_text = "Your_plain_text"
+plain_text = "via Alfieri 17, Bomporto (MO)"
 
-print("------ AES-GCM Encryption ------")
+print("------ AES-GCM Encryption of location's report ------")
 cipher_text = encrypt(secret_key, plain_text, IV)
-print(outputFormat.format("encryption input", plain_text))
-print(outputFormat.format("encryption output", cipher_text))
+print(outputFormat.format("encryption location report input", plain_text))
+print(outputFormat.format("encryption location report output", cipher_text))
 
+import hashlib
+
+hashed_pi_finder = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
+print("pi hashed hashed for iCloud for : ", hashed_pi_finder)
 
 ##########
 # iPhone #
@@ -142,6 +144,17 @@ print(outputFormat.format("encryption output", cipher_text))
 # il medesimo generatore Pi. In questo modo dovrei essere in grado di arrivare ad un
 # segreto comune tale per cui possa ritornare ad avere e' ed IV esattamente come li
 # usati il Finder. In tal modo potrei decifrare il contenuto del file. 
+
+
+###################
+# iCloud Activity #
+###################
+
+print("\nAsk iCloud if is possible to find my missing device...")
+hashed_pi_cached = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
+print(hashed_pi_cached==hashed_pi_finder)
+
+print("Download and decrypt the right report...")
 
 final_key = FinderPubKey * LostDevicePrivKey
 
@@ -158,6 +171,6 @@ IV2 = final_key_TO_SPLIT[16:32]
 secret_key = str(e2)
 decrypted_text = decrypt(secret_key, cipher_text, IV2)
 
-print("\n------ AES-GCM Decryption ------")
+print("------ AES-GCM Decryption ------")
 print(outputFormat.format("decryption input", cipher_text))
 print(outputFormat.format("decryption output", decrypted_text))
