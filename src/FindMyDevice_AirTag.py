@@ -3,31 +3,37 @@
 #######################
 
 from lib.utils import *
-import secrets
+
+print("""
+ ██████╗ ██╗   ██╗███████╗██╗███╗   ██╗██████╗ 
+ ██╔══██╗╚██╗ ██╔╝██╔════╝██║████╗  ██║██╔══██╗
+ ██████╔╝ ╚████╔╝ █████╗  ██║██╔██╗ ██║██║  ██║
+ ██╔═══╝   ╚██╔╝  ██╔══╝  ██║██║╚██╗██║██║  ██║
+ ██║        ██║   ██║     ██║██║ ╚████║██████╔╝
+ ╚═╝        ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     AirTag Edition OwO 
+        """)
 
 # STEP 1: compute ECDH with the AirTag
-print("Pairing between my iPhone and Lost Device...")
+print(" Pairing between the iPhone and my AirTag using ECDH")
 
 # choosing the curve
 curve = registry.get_curve('secp224r1')
 
 iPhonePrivKey = secrets.randbelow(curve.field.n)
 iPhonePubKey = iPhonePrivKey * curve.g
-print("iPhone public key:", compress(iPhonePubKey))
+print("\n 1. iPhone public key: ", compress(iPhonePubKey))
 
 LostDevicePrivKey = secrets.randbelow(curve.field.n)
 LostDevicePubKey = LostDevicePrivKey * curve.g
-print("Lost Device public key:", compress(LostDevicePubKey))
-
-print("Now exchange the public keys Apple *Magic* Bluetooth")
+print(" 2. Lost Device public key:", compress(LostDevicePubKey))
 
 iPhoneSharedKey = iPhonePrivKey * LostDevicePubKey
-print("iPhone shared key:", compress(iPhoneSharedKey))
+print(" 3. iPhone shared key:", compress(iPhoneSharedKey))
 
 LostDeviceSharedKey = LostDevicePrivKey * iPhonePubKey
-print("Lost Device shared key:", compress(LostDeviceSharedKey))
+print(" 4. Lost Device shared key:", compress(LostDeviceSharedKey))
 
-print("Check if the iPhone and the Lost Device shared the same shared key:", iPhoneSharedKey == LostDeviceSharedKey)
+print("\n Check if the iPhone and the Lost Device shared the same shared key:", iPhoneSharedKey == LostDeviceSharedKey)
 
 ########################
 # LOST DEVICE ACTIVITY #
@@ -38,7 +44,7 @@ print("Check if the iPhone and the Lost Device shared the same shared key:", iPh
 # 3. di = (d0 * ui) + vi
 # 4. pi = di * G
 
-print("\nLost Device forging advertisemente key...")
+
 
 # SKi = KDF(SKi-1, update, 32)
 xkdf = X963KDF(
@@ -79,7 +85,7 @@ Di = (LostDevicePrivKey * Ui_int_val) + Vi_int_val
 # pi = di * G
 Pi = Di * curve.g
 
-print("Advertisement key of the Lost Device: " + compress(Pi))
+print("\n Forging the first advertisment key: ", compress(Pi))
 
 ##################
 # Finder DEVICE #
@@ -87,6 +93,9 @@ print("Advertisement key of the Lost Device: " + compress(Pi))
 # ECDH with lost device using the Pi as generator
 # X963 to derive another key of 32 bytes
 # split this 32 bytes key into 16 bytes of e' and 16 bytes IV and use it with AES-GCM algorithm to cipher some metadata
+print("\n Oh no! Someone have stolen my wallet with the AirTag inside. Let's find the pickerpocket!")
+print("\n *Someone with an iPhone casually pass by near the robber and spot my AirTag*")
+print("\n Time for ECDH! (Between my airtag and the iPhone)")
 
 # step 1
 curve = registry.get_curve('secp224r1')
@@ -95,18 +104,18 @@ print("\nSomeone find my LostDevice. Time to exchanging some message through BLE
 
 FinderPrivKey = secrets.randbelow(curve.field.n)
 FinderPubKey = FinderPrivKey * Pi
-print("Finder public key:", compress(FinderPubKey))
+print("\n 1. Finder public key:", compress(FinderPubKey))
 
 LostDevicePubKey2 = LostDevicePrivKey * Pi
-print("Lost Device2 public key:", compress(LostDevicePubKey2))
+print(" 2. AirTag public key:", compress(LostDevicePubKey2))
 
 FinderSharedKey = FinderPrivKey * LostDevicePubKey2
-print("Finder shared key:", compress(FinderSharedKey))
+print(" 3. Finder shared key:", compress(FinderSharedKey))
 
 LostDeviceSharedKey2 = LostDevicePrivKey * FinderPubKey
-print("Lost Device2 shared key:", compress(LostDeviceSharedKey2))
+print(" 4. Airtag shared key:", compress(LostDeviceSharedKey2))
 
-print("Check if the iPhone and the Lost Device shared the same shared key:", FinderSharedKey == LostDeviceSharedKey2)
+print(" Check if the finder's iPhone and the AirTag shared the same shared key: ", FinderSharedKey == LostDeviceSharedKey2)
 
 # step 2
 xkdf = X963KDF(
@@ -123,7 +132,7 @@ outputFormat = "{:<25}:{}"
 secret_key = str(e)
 plain_text = "via Alfieri 17, Bomporto (MO)"
 
-print("------ AES-GCM Encryption of location's report ------")
+print("\n Finder's iPhone send an ecnrypted location report to iCloud using AES-GCM Encryption") 
 cipher_text = encrypt(secret_key, plain_text, IV)
 print(outputFormat.format("encryption location report input", plain_text))
 print(outputFormat.format("encryption location report output", cipher_text))
@@ -131,7 +140,7 @@ print(outputFormat.format("encryption location report output", cipher_text))
 import hashlib
 
 hashed_pi_finder = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
-print("pi hashed hashed for iCloud for : ", hashed_pi_finder)
+print("\n The advertisement key of my AirTag is hashed for iCloud : ", hashed_pi_finder)
 
 ##########
 # iPhone #
@@ -150,11 +159,11 @@ print("pi hashed hashed for iCloud for : ", hashed_pi_finder)
 # iCloud Activity #
 ###################
 
-print("\nAsk iCloud if is possible to find my missing device...")
+print("\n I ask iCloud if is possible to find my missing device... maybe there are some reports for me! I'm using the hash my iPhone advertisement key to look for something")
 hashed_pi_cached = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
 print(hashed_pi_cached==hashed_pi_finder)
 
-print("Download and decrypt the right report...")
+print(" There's something! Now it is time to download and decrypt the right report...")
 
 final_key = FinderPubKey * LostDevicePrivKey
 
@@ -171,6 +180,5 @@ IV2 = final_key_TO_SPLIT[16:32]
 secret_key = str(e2)
 decrypted_text = decrypt(secret_key, cipher_text, IV2)
 
-print("------ AES-GCM Decryption ------")
-print(outputFormat.format("decryption input", cipher_text))
-print(outputFormat.format("decryption output", decrypted_text))
+print(outputFormat.format("\n Encrypted location report: ", cipher_text))
+print(outputFormat.format(" Decrypted location report: ", decrypted_text))
