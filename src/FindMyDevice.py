@@ -5,21 +5,30 @@ from lib.utils import *
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.x963kdf import X963KDF
 
-print("Generating beacon key pair on my iPhone...")
+print("""
+ ██████╗ ██╗   ██╗███████╗██╗███╗   ██╗██████╗ 
+ ██╔══██╗╚██╗ ██╔╝██╔════╝██║████╗  ██║██╔══██╗
+ ██████╔╝ ╚████╔╝ █████╗  ██║██╔██╗ ██║██║  ██║
+ ██╔═══╝   ╚██╔╝  ██╔══╝  ██║██║╚██╗██║██║  ██║
+ ██║        ██║   ██║     ██║██║ ╚████║██████╔╝
+ ╚═╝        ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝      
+        """)
+
+print(" Generating beacon key with NISP P-224 curve pair on my iPhone. Here's my key:")
 
 # choosing the curve and generate beacon key
 curve = registry.get_curve('secp224r1')
 
 iPhonePrivKey = secrets.randbelow(curve.field.n)
 iPhonePubKey = iPhonePrivKey * curve.g
-print("iPhone public key:", compress(iPhonePubKey))
-print("iPhone private key:", iPhonePrivKey)
+print("\n 1. iPhone public key:", compress(iPhonePubKey))
+print(" 2. iPhone private key:", iPhonePrivKey)
 
 import secrets
 iPhoneSymmKey = secrets.token_hex(32)
 iPhoneSymmKey = str.encode(iPhoneSymmKey)
 
-print("iPhone symmetric key: ", iPhoneSymmKey)
+print(" 3. iPhone symmetric key: ", iPhoneSymmKey)
 
 ########################
 # LOST iPhone ACTIVITY #
@@ -64,30 +73,32 @@ Di = (iPhoneSymmKey_int * Ui_int_val) + Vi_int_val
 # pi = di * G
 Pi = Di * curve.g
 
-print("Advertisement key of the Lost Device: " + compress(Pi))
+print("\n Forging the first advertisment key: ", compress(Pi))
 
 ##################
 # Finder DEVICE #
 ##################
 
+print("\n iPhone get lost :( ...\n but someone close to my iPhone could help me!")
+print(" Finder's iPhone performs ECDH with mine:")
+
 # ECDH with lost device using the Pi as generator
 curve = registry.get_curve('secp224r1')
-print("-----------------------------------------------------\nPairing between my lost iPhone and Finder Device...")
 
 FinderPrivKey = secrets.randbelow(curve.field.n)
 FinderPubKey = FinderPrivKey * Pi
-print("Finder public key:", compress(FinderPubKey))
+print("\n 1. Finder public key:", compress(FinderPubKey))
 
 iPhonePubKey2 = iPhonePrivKey * Pi
-print("iPhone Device2 public key:", compress(iPhonePubKey2))
+print(" 2. iPhone Device2 public key:", compress(iPhonePubKey2))
 
 FinderSharedKey = FinderPrivKey * iPhonePubKey2
-print("Finder shared key:", compress(FinderSharedKey))
+print(" 3. Finder shared key:", compress(FinderSharedKey))
 
 iPhoneSharedKey = iPhonePrivKey * FinderPubKey
-print("iPhone shared key:", compress(iPhoneSharedKey))
+print(" 4. iPhone shared key:", compress(iPhoneSharedKey))
 
-print("Check if the iPhone and the Lost Device shared the same shared key:", FinderSharedKey == iPhoneSharedKey)
+print("\n Check both of the phones share the same shared secret:", FinderSharedKey == iPhoneSharedKey)
 
 # X963 to derive another key of 32 bytes
 xkdf = X963KDF(
@@ -105,26 +116,23 @@ outputFormat = "{:<25}:{}"
 secret_key = str(e)
 plain_text = "Your_plain_text"
 
-print("AES-GCM Encryption...") 
+print("\n Finder's iPhone send an ecnrypted location report to iCloud using AES-GCM Encryption") 
 cipher_text = encrypt(secret_key, plain_text, IV)
-print(outputFormat.format("Encryption input: ", plain_text))
-print(outputFormat.format("Encryption output: ", cipher_text))
+print(outputFormat.format("\n Encryption input: ", plain_text))
+print(outputFormat.format(" Encryption output: ", cipher_text))
 
 import hashlib
 
 hashed_pi_finder = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
-print("pi hashed hashed for iCloud for : ", hashed_pi_finder)
+print("\n The advertisement key of my iPhone is hashed for iCloud : ", hashed_pi_finder)
 
 ##########
 # OWNER  #
 ##########
-print("\nAsk iCloud if is possible to find my missing device...")
+print("\n I ask iCloud if is possible to find my missing device... maybe there are some reports for me! I'm using the hash my iPhone advertisement key to look for something")
 hashed_pi_cached = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
-print(hashed_pi_cached==hashed_pi_finder)
 
-print("Download and decrypt the right report...")
-
-print("-----------------------------------------------------\nRetriving metadata from Finder's upload on iCloud...")
+print(" There's something! Now it is time to download and decrypt the right report...")
 
 final_key = FinderPubKey * iPhonePrivKey
 
@@ -141,6 +149,5 @@ IV2 = final_key_TO_SPLIT[16:32]
 secret_key = str(e2)
 decrypted_text = decrypt(secret_key, cipher_text, IV2)
 
-print("AES-GCM Decryption...")
-print(outputFormat.format("Decryption input: ", cipher_text))
-print(outputFormat.format("Decryption output: ", decrypted_text))
+print(outputFormat.format("\n Encrypted location report: ", cipher_text))
+print(outputFormat.format(" Decrypted location report: ", decrypted_text))
