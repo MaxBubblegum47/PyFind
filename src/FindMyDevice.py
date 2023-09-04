@@ -110,10 +110,20 @@ cipher_text = encrypt(secret_key, plain_text, IV)
 print(outputFormat.format("Encryption input: ", plain_text))
 print(outputFormat.format("Encryption output: ", cipher_text))
 
+import hashlib
+
+hashed_pi_finder = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
+print("pi hashed hashed for iCloud for : ", hashed_pi_finder)
 
 ##########
 # OWNER  #
 ##########
+print("\nAsk iCloud if is possible to find my missing device...")
+hashed_pi_cached = hashlib.sha256(compress(Pi).encode('ISO-8859-1')).hexdigest()
+print(hashed_pi_cached==hashed_pi_finder)
+
+print("Download and decrypt the right report...")
+
 print("-----------------------------------------------------\nRetriving metadata from Finder's upload on iCloud...")
 
 final_key = FinderPubKey * iPhonePrivKey
